@@ -8,7 +8,7 @@ from typing import List, Generic, TypeVar
 
 from .excs import ValidationError
 from .utils import _safe_getitem
-from .models import MediaDownload, MediaUpload, ResumableUpload, Request
+from .models import MediaDownload, MediaUpload, ResumableUpload, ResumableUploadChunk, Request
 from .validate import validate as validate_
 
 
@@ -146,8 +146,10 @@ class Method:
         else:
             self._download_base_url = None
 
+        self._http_method = self["httpMethod"]
         self._base_url = self._root_url + self._service_path
         self._batch_url = self._root_url + self._batch_path
+
 
         self._should_validate = validate
 

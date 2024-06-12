@@ -29,6 +29,24 @@ class ResumableUpload:
         self.multipart = multipart
         self.chunk_size = chunk_size or DEFAULT_UPLOAD_CHUNK_SIZE
 
+class ResumableUploadChunk:
+    """
+    Resumable Upload Chunk. 
+    Works independently from the MediaUpload objects and their derivatives.
+
+    Arguments:
+
+        chunk_bytes (bytes): The byte content of the chunk. Passed as a 'data' to the calling method.
+
+        content_range (str): The content range of the bytes returned by a process generating chunk_bytes.
+
+    """
+
+    def __init__(self, chunk_bytes: bytes, content_range: str):
+        self.chunk_bytes = chunk_bytes
+        self.chunk_size = len(chunk_bytes) 
+        self.content_range = content_range
+
 
 class MediaUpload:
     """
@@ -175,6 +193,10 @@ class Request:
         _verify_ssl (boolean): Defaults to True.
 
         upload_file_content_type (str): Optional content-type header string. In case you don't want to use the default application/octet-stream (Or whatever is auto-detected by your transport handler)
+        
+        simple_upload_data (bool or None): Optional boolean flag indicating simple bytes upload. The actual payload is transfered by the `data` field
+
+        resumable_upload_chunk (aiogoogle.models.ResumableUploadChunk): A chunk of data to upload into the bucket using resumable upload interface. 
         """
 
     def __init__(
@@ -191,6 +213,8 @@ class Request:
         callback=None,
         _verify_ssl=True,
         upload_file_content_type=None,
+        simple_upload_data: bool | None = None,
+        resumable_upload_chunk: ResumableUploadChunk | None = None
     ):
         self.method = method
         self.url = url
@@ -204,6 +228,8 @@ class Request:
         self.callback = callback
         self._verify_ssl = _verify_ssl
         self.upload_file_content_type = upload_file_content_type
+        self.resumable_upload_chunk = resumable_upload_chunk
+        self.simple_upload_data = simple_upload_data
 
     def _add_query_param(self, query: dict):
         url = self.url
@@ -468,6 +494,8 @@ class Response:
     def error_msg(self):
         if self.json is not None and self.json.get("error") is not None:
             return pprint.pformat(self.json["error"])
+        else:
+            return self.content
 
     def raise_for_status(self):
         if self.status_code >= 400:

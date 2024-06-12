@@ -100,7 +100,7 @@ class AiohttpSession(ClientSession, AbstractSession):
 
         async def fire_request(request):
             request.headers["Accept-Encoding"] = "gzip"
-            request.headers["User-Agent"] = "Aiogoogle Aiohttp (gzip)"
+            request.headers["User-Agent"] = "Plain old lynx(gzip)"
             if request.media_upload:
                 # Validate
                 await request.media_upload.run_validation(_get_file_size)
@@ -141,6 +141,39 @@ class AiohttpSession(ClientSession, AbstractSession):
                         timeout=request.timeout,
                         verify_ssl=request._verify_ssl,
                     )
+            # If there is a resumable upload chunk, just send them to the url
+            elif request.resumable_upload_chunk:
+                chunk = request.resumable_upload_chunk
+                request.headers.update({
+                    "Content-Length": f"{chunk.chunk_size}",
+                    "Content-Range": chunk.content_range,
+                })
+                # print("Resumable upload initiated...")
+                # print(request.headers)
+
+                return await self.request(
+                    method=request.method,
+                    url=request.url,
+                    headers=request.headers,
+                    data=chunk.chunk_bytes,
+                    json=request.json,
+                    timeout=request.timeout,
+                    verify_ssl=request._verify_ssl,
+                )
+            # If there is a simple small byte transfer 
+            elif request.simple_upload_data:
+                print("Simple upload initiated...")
+                print(request.headers)
+                return await self.request(
+                    method=request.method,
+                    url=request.url,
+                    headers=request.headers,
+                    data=request.data,
+                    json=request.json,
+                    timeout=request.timeout,
+                    verify_ssl=request._verify_ssl,
+                )
+
             # Else, if no file upload
             else:
                 return await self.request(
